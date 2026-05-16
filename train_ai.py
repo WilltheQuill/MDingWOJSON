@@ -5,7 +5,7 @@ import pickle
 from sklearn.ensemble import RandomForestClassifier
 
 # 1. Define your folder path and mapping logic
-ROKOKO_FOLDER = r"C:\Users\Admin\AppData\LocalLow\Rokoko Electronics\Rokoko Studio\Rokoko_Data"
+ROKOKO_FOLDER = r"C:\Users\Admin\AppData\LocalLow\Rokoko Electronics\Rokoko Studio\Rokoko_Data" 
 MODEL_SAVE_PATH = "ai_model.pkl"
 
 # Your specific MathsDancing dictionary mapping
