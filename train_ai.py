@@ -10,12 +10,12 @@ MODEL_SAVE_PATH = "ai_model.pkl"
 
 # Your specific MathsDancing dictionary mapping
 GESTURE_MAP = {
-    "BackStepCrossReturn_04": 1,
-    "FrontKickCrossReturn_03": 2,
-    "FrontKickReturn_02": 3,
-    "FrontStepCrossReturn_06": 4,
-    "FrontStepReturn_05": 5,
-    "SideStepReturn_01": 6
+     "SideStepReturn_01": 1,
+   "FrontKickReturn_02": 2,
+   "FrontKickCrossReturn_03": 3,
+   "BackStepCrossReturn_04": 4,
+   "FrontStepReturn_05": 5,
+   "FrontStepCrossReturn_06": 6
 }
 
 def extract_features_from_bvh(filepath):
