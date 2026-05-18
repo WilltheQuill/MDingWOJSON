@@ -12,7 +12,7 @@ def record_move(move_name, duration=3.0):
     move_name: What to call the saved file.
     duration: How many seconds to record.
     """
-    filename = f"{move_name}.json"
+    filename = f"recordings/{move_name}.json"
     
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((UDP_IP, UDP_PORT))

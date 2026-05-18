@@ -2,85 +2,103 @@ import os
 import glob
 import numpy as np
 import pickle
+import json
 from sklearn.ensemble import RandomForestClassifier
 
-# 1. Define your folder path and mapping logic
-ROKOKO_FOLDER = r"C:\Users\Admin\AppData\LocalLow\Rokoko Electronics\Rokoko Studio\Rokoko_Data" 
-MODEL_SAVE_PATH = "ai_model.pkl"
+# Point directly to your desktop project folder where your recorded JSONs live
+PROJECT_FOLDER = r"C:\Users\Admin\Desktop\MathsDancing\recordings"
+MODEL_SAVE_PATH = r"C:\Users\Admin\Desktop\MathsDancing\ai_model.pkl"
 
-# Your specific MathsDancing dictionary mapping
 GESTURE_MAP = {
-    "SideStepReturn_01": 1,
-    "FrontKickReturn_02": 2,
-    "FrontKickCrossReturn_03": 3,
-    "BackStepCrossReturn_04": 4,
-    "FrontStepReturn_05": 5,
-    "FrontStepCrossReturn_06": 6
+    "IDLE_00":0,
+    "FOOT_BackCrossStepReturn_01": 1,
+    "FOOT_FrontKickReturn_02": 2,
+    "FOOT_FrontCrossKickReturn_03": 3,
+    
+    #"FOOT_FrontStepCrossReturn_04": 4,
+    #"FOOT_FrontStepReturn_05": 5,
+    #"FOOT_SideStepReturn_06": 6
 }
 
-def extract_features_from_bvh(filepath):
-    """Reads a BVH file and extracts statistical features from the motion data."""
+def extract_floats_from_json(json_data):
+    """Recursively pulls all numerical coordinates out of a JSON frame."""
+    floats = []
+    if isinstance(json_data, dict):
+        for key, value in json_data.items():
+            floats.extend(extract_floats_from_json(value))
+    elif isinstance(json_data, list):
+        for item in json_data:
+            floats.extend(extract_floats_from_json(item))
+    elif isinstance(json_data, (float, int)):
+        floats.append(float(json_data))
+    return floats
+
+def extract_features_from_json_file(filepath):
+    """Loads a recorded JSON file and flattens it into an AI feature array."""
     with open(filepath, 'r') as f:
-        lines = f.readlines()
-    
-    # Find where the MOTION section starts
-    motion_start = 0
-    for i, line in enumerate(lines):
-        if "MOTION" in line:
-            motion_start = i + 3 # Skip 'MOTION', 'Frames:', 'Frame Time:'
-            break
-            
-    # Extract all frames as a matrix of floats
-    frames = []
-    for line in lines[motion_start:]:
-        # Convert the line of text into a list of numbers
-        values = [float(x) for x in line.strip().split()]
-        frames.append(values)
+        frames_list = json.load(f)
         
-    frames = np.array(frames)
+    matrix = []
+    for frame in frames_list:
+        numeric_data = extract_floats_from_json(frame)
+        if numeric_data:
+            matrix.append(numeric_data)
+            
+    matrix = np.array(matrix)
     
-    # AI Feature Engineering: We don't care how long the move took. 
-    # We care about the average position and the variance (how much things moved).
-    mean_features = np.mean(frames, axis=0)
-    std_features = np.std(frames, axis=0)
+    # Instead of averaging the whole matrix, split it into 3 equal time chunks
+    # (Beginning, Middle, and End)
+    time_chunks = np.array_split(matrix, 3)
+
+    temporal_features = []
+    for chunk in time_chunks:
+        if len(chunk) > 0:
+         # Calculate the mean and variance for THIS specific slice of time
+            chunk_mean = np.mean(chunk, axis=0)
+            chunk_std = np.std(chunk, axis=0)
+            temporal_features.extend(chunk_mean)
+            temporal_features.extend(chunk_std)
+
+    # Combine all time chunks into one massive, highly detailed timeline array
+    final_features = np.array(temporal_features)
     
-    # Combine them into a single 1D array representing the whole file
-    return np.concatenate((mean_features, std_features))
+    return final_features
 
 def train_model():
-    print(f"Scanning {ROKOKO_FOLDER} for .bvh files...")
-    search_pattern = os.path.join(ROKOKO_FOLDER, "*.bvh")
+    print(f"Scanning {PROJECT_FOLDER} for recorded JSON files...")
+    search_pattern = os.path.join(PROJECT_FOLDER, "*.json")
     files = glob.glob(search_pattern)
     
-    X_data = [] # The mathematical features
-    y_labels = [] # The target numbers (1-6)
+    X_data = []
+    y_labels = []
     
     for file in files:
         filename = os.path.basename(file)
         
-        # Check if the file matches any of our known base gestures
+        # Skip the layout map file if it's named symbol_map.json
+        if "symbol_map" in filename:
+            continue
+            
         for base_gesture, number_id in GESTURE_MAP.items():
             if base_gesture in filename:
-                print(f"Processing: {filename} -> Mapping to {number_id}")
-                features = extract_features_from_bvh(file)
+                print(f"Training on layout: {filename} -> Mapped to {number_id}")
+                features = extract_features_from_json_file(file)
                 X_data.append(features)
                 y_labels.append(number_id)
                 break
                 
     if not X_data:
-        print("No matching files found. Check your file paths and names.")
+        print("No matching gesture JSON files found on your Desktop folder yet.")
         return
 
-    # Train the Machine Learning Model
-    print("Training AI model on 5 iterations...")
+    print(f"Training dynamic model on matching features...")
     clf = RandomForestClassifier(n_estimators=100, random_state=42)
     clf.fit(X_data, y_labels)
     
-    # Save the model to your hard drive
     with open(MODEL_SAVE_PATH, 'wb') as f:
         pickle.dump(clf, f)
     
-    print(f"Training Complete! Model saved as {MODEL_SAVE_PATH}")
+    print(f"Success! New aligned model saved to {MODEL_SAVE_PATH}")
 
 if __name__ == "__main__":
     train_model()

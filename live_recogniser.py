@@ -64,20 +64,26 @@ def start_listening():
                 
                 # Check if we are allowed to guess yet
                 if time.time() > cooldown:
-                    
                     # Convert buffer to numpy array to match our training format
                     buffer_array = np.array(frame_buffer)
                     
-                    # Calculate mean and standard deviation just like in training
-                    mean_features = np.mean(buffer_array, axis=0)
-                    std_features = np.std(buffer_array, axis=0)
-                    live_features = np.concatenate((mean_features, std_features))
+                    # Split the buffer into 3 equal time chunks (Beginning, Middle, and End)
+                    time_chunks = np.array_split(buffer_array, 3)
+
+                    temporal_features = []
+                    for chunk in time_chunks:
+                        if len(chunk) > 0:
+                            # Calculate the mean and variance for THIS specific slice of time
+                            chunk_mean = np.mean(chunk, axis=0)
+                            chunk_std = np.std(chunk, axis=0)
+                            temporal_features.extend(chunk_mean)
+                            temporal_features.extend(chunk_std)
+
+                    # Combine all time chunks into one massive, highly detailed timeline array
+                    final_features = np.array(temporal_features)
                     
-                    # NOTE: If the length of live_features doesn't match the BVH features perfectly,
-                    # the AI will throw an error here. This is the Euler vs Quaternion issue mentioned above.
-                    
-                    # Ask the AI to guess the move
-                    prediction = ai_model.predict([live_features])[0]
+                    # Ask the AI to guess the move using the new chunked timeline
+                    prediction = ai_model.predict([final_features])[0]
                     
                     print(f"\n============================")
                     print(f" DETECTED MOVE NUMBER: {prediction} ")
